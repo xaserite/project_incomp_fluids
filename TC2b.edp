@@ -1,0 +1,7 @@
+int C = 99;
+real L = 5;
+border a0(t=0,1) {x=t*L; y=-.5; label=C;}
+border a1(t=0,1) {x=L; y=-.5+t; label=C;}
+border a2(t=0,1) {x=L-t*L; y=.5; label=C;}
+border a3(t=0,1) {x=0; y=.5-t; label=C;}
+plot (a0(L*10) + a1(10) + a2(L*10) + a3(10), wait=true );
