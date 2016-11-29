@@ -1,0 +1,11 @@
+real L=0.75;
+real H=0.25;
+
+border a(t=L,1){x=t;y=0;};
+border b(t=0,1){x=1;y=t;};
+border c(t=0,1){x=1-t;y=1;};
+border d(t=0,1-H){x=0;y=1-t;};
+border e(t=0,L){x=t;y=H;};
+border f(t=0,H){x=L;y=H-t;};
+
+plot(a(10),b(10),c(10),d(10),e(10),f(10),wait=1);
