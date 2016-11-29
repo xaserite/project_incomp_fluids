@@ -1,7 +1,21 @@
 int C = 99;
 real L = 5;
+int Nh = 10;
+// domain and mesh building
 border a0(t=0,1) {x=t*L; y=-.5; label=C;}
-border a1(t=0,1) {x=L; y=-.5+t; label=C;}
+border a1(t=0,1) {x=L; y=-.5+t;}
 border a2(t=0,1) {x=L-t*L; y=.5; label=C;}
-border a3(t=0,1) {x=0; y=.5-t; label=C;}
-plot (a0(L*10) + a1(10) + a2(L*10) + a3(10), wait=true );
+border a3(t=0,1) {x=0; y=.5-t;}
+plot (a0(L*Nh) + a1(Nh) + a2(L*Nh) + a3(Nh), wait=true );
+mesh Th = buildmesh(a0(L*Nh) + a1(Nh) + a2(L*Nh) + a3(Nh));
+plot(Th,wait=1);
+// FE spaces
+fespace Uh(Th,P1b); Uh u,v,uu,vv;
+fespace Ph(Th,P1); Ph p,pp;
+// compute
+solve stokes([u,v,p],[uu,vv,pp]) =
+			int2d(Th)(dx(u)*dx(uu)+dy(u)*dy(uu) + dx(v)*dx(vv)+ dy(v)*dy(vv)
+								+ dx(p)*uu + dy(p)*vv + pp*(dx(u)+dy(v))
+								- 1e-10*p*pp)
+								+ on(C,u=0,v=0) + on(a3,u=1,v=0);
+plot([u,v],p,wait=1);
