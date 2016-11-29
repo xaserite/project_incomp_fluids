@@ -1,6 +1,32 @@
+int C = 99;
+int Nh = 10;
+real nu = 8.9e-4;
+real u0 = 1.;
+real omega = 1.;
+real t = 0.;
+real Tmax = 2;
+int Nit = 100;
+real dt = Tmax/Nit;
+// domain and mesh building
 border a(t=0,1){x=t;y=0;};
 border b(t=0,1){x=1;y=t;};
 border c(t=0,1){x=1-t;y=1;};
 border d(t=0,1){x=0;y=1-t;};
-
-plot(a(10),b(10),c(10),d(10),wait=1);
+plot(a(Nh),b(Nh),c(Nh),d(Nh),wait=1);
+mesh Th = buildmesh(a(Nh) + b(Nh) + c(Nh) + d(Nh));
+plot(Th,wait=1);
+// FE spaces
+fespace Uh(Th,P1b); Uh u,v,uu,vv;
+fespace Ph(Th,P1); Ph p,pp;
+// compute
+for(int i=0;i<Nit;i++)
+{
+  solve stokes([u,v,p],[uu,vv,pp]) =
+    int2d(Th)(u*uu + v*vv + dt*nu*(dx(u)*dx(uu)+dy(u)*dy(uu) + dx(v)*dx(vv)+ dy(v)*dy(vv))
+  + dt*dx(p)*uu + dt*dy(p)*vv + dt*pp*(dx(u)+dy(v))
+  - dt*1e-10*p*pp)
+  + on(b,d,u=0,v=0) + on(a,u=u0,v=0)
+  - int2d(Th)(u*uu + v*vv);
+  t += dt;
+  plot([u,v],p,wait=0,value=1,cmm="time = "+t);
+} 
