@@ -1,0 +1,5 @@
+border a(t=0,1){x=t;y=0;};
+border b(t=0,1){x=1;y=t;};
+border c(t=0,1){x=1-t;y=1-t;};
+
+plot(a(10),b(10),c(10),wait=1);
