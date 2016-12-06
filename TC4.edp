@@ -1,4 +1,4 @@
-real L=0.9, H=0.25;
+real L=0.5, H=0.25;
 int entry = 99, lim = 98, exit = 97;
 int Nh = 10;
 real nu = 8.9e-4;
@@ -9,10 +9,10 @@ real Tmax = 4*pi;
 int Nit = 100;
 real dt = Tmax/Nit;
 // domain and mesh building
-border a(t=L,1){x=t;y=0; label=entry;}
-border b(t=0,1){x=1;y=t; label=lim;}
-border c(t=0,1){x=1-t;y=1; label=exit;}
-border d(t=0,1-H){x=0;y=1-t; label=lim;}
+border a(t=L,1){x=t;y=0; label=lim;}
+border b(t=0,1){x=1;y=t; label=exit;}
+border c(t=0,1){x=1-t;y=1; label=lim;}
+border d(t=0,1-H){x=0;y=1-t; label=entry;}
 border e(t=0,L){x=t;y=H; label=lim;}
 border f(t=0,H){x=L;y=H-t; label=lim;}
 
