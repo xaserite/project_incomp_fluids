@@ -1,11 +1,12 @@
+load "iovtk";
 int C = 99;
 real L = 5;
-int Nh = 10;
+int Nh = 20;
 real nu = 8.9e-4;
 real u0 = 1.;
-real omega = 1.;
+real omega = .5;
 real t = 0.;
-real Tmax = 2*pi;
+real Tmax = 4*pi;
 int Nit = 100;
 real dt = Tmax/Nit;
 // domain and mesh building
@@ -17,18 +18,21 @@ plot (a0(L*Nh) + a1(Nh) + a2(L*Nh) + a3(Nh), wait=true );
 mesh Th = buildmesh(a0(L*Nh) + a1(Nh) + a2(L*Nh) + a3(Nh));
 plot(Th,wait=1);
 // FE spaces
-fespace Uh(Th,P1b); Uh u,v,uu,vv;
+fespace Uh(Th,P2); Uh u=0,v=0,uu,vv;
 fespace Ph(Th,P1); Ph p,pp;
 // compute
 for(int i=0;i<Nit;i++)
 {
+	Uh uold = u, vold = v;
   solve stokes([u,v,p],[uu,vv,pp]) =
     int2d(Th)(u*uu + v*vv + dt*nu*(dx(u)*dx(uu)+dy(u)*dy(uu) + dx(v)*dx(vv)+ dy(v)*dy(vv))
   + dt*dx(p)*uu + dt*dy(p)*vv + dt*pp*(dx(u)+dy(v))
-  - dt*1e-10*p*pp)
-  + on(C,u=0,v=0) + on(a3,a1,u=u0*sin(omega*t)^2,v=0)
-  - int2d(Th)(u*uu + v*vv);
+  - dt*1e-6*p*pp)
+  + on(C,u=0,v=0) + on(a3,u=(.25-y^2)*sin(omega*t)^2,v=0)
+	 + on(a1,u=(.25-y^2)*sin(omega*t)^2,v=0)
+  - int2d(Th)(uold*uu + vold*vv);
   t += dt;
   plot([u,v],p,wait=0,value=1,cmm="time = "+t);
+	savevtk("out/outputfile"+i+".vtk",Th,[u,v,0.],p);
 } 
 
