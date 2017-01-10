@@ -20,7 +20,7 @@ plot(Th,wait=1);
 
 // FE spaces
 fespace Uh(Th,P1b); Uh u,v,uu,vv,uold,vold;
-fespace Ph(Th,P1); Ph p,pp;
+fespace Ph(Th,P1); Ph p,pp,pold;
 
 problem stokes([u,v,p],[uu,vv,pp]) =
     int2d(Th)(u*uu + v*vv + dt*nu*(dx(u)*dx(uu)+dy(u)*dy(uu) + dx(v)*dx(vv)+ dy(v)*dy(vv))
@@ -29,13 +29,22 @@ problem stokes([u,v,p],[uu,vv,pp]) =
   + on(C,u=0,v=0) + on(a3,a1,u=u0*sin(omega*t)^2,v=0)
   - int2d(Th)(uold*uu + vold*vv);
 
+/*
+problem Crank_Nicolson([u,v,p],[uu,vv,pp]) =
+    int2d(Th)(u*uu + v*vv + 0.5*dt*nu*(dx(u)*dx(uu)+dy(u)*dy(uu) + dx(v)*dx(vv)+ dy(v)*dy(vv))
+  + 0.5*dt*dx(p)*uu + 0.5*dt*dy(p)*vv + 0.5*dt*pp*(dx(u)+dy(v))
+  - 0.5*dt*1e-10*p*pp)
+  + on(C,u=0,v=0) + on(a3,a1,u=u0*sin(omega*t)^2,v=0)
+  - int2d(Th)(uold*uu + vold*vv);
+*/
+
 // compute
 for(int i=0;i<Nit;i++)
 {
   stokes;
   t += dt;
   plot([u,v],p,wait=0,value=1,cmm="time = "+t);
-  savevtk("2b/outputfile"+i+".vtk",Th,[u,v,0],p);
+  savevtk("2b/P1bP1"+i+".vtk",Th,[u,v,0],p);
   uold=u;
   vold=v;
 } 

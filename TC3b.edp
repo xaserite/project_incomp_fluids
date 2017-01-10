@@ -1,6 +1,6 @@
 load "iovtk";
 int C = 99;
-int Nh = 100;
+int Nh = 50;
 real nu = 8.9e-4;
 real u0 = 1.;
 real omega = 0.5;
@@ -8,6 +8,7 @@ real t = 0.;
 real Tmax = 8*pi;
 int Nit = 200;
 real dt = Tmax/Nit;
+real dtcn = dt/2.;
 real penalty = 1.e-6;
 // domain and mesh building
 border a(t=0,1){x=t;y=0;};
@@ -18,19 +19,41 @@ plot(a(Nh),b(Nh),c(Nh),d(Nh),wait=1);
 mesh Th = buildmesh(a(Nh) + b(Nh) + c(Nh) + d(Nh));
 plot(Th,wait=1);
 // FE spaces
-fespace Uh(Th,P1b); Uh u = 0.,v = 0.,uu,vv;
-fespace Ph(Th,P1); Ph p,pp;
+fespace Uh(Th,P2); Uh u,v,uu,vv,uold,vold;
+fespace Ph(Th,P1); Ph p,pp,pold;
+
+problem stokes([u,v,p],[uu,vv,pp]) =
+    int2d(Th)(u*uu + v*vv
+    + dt*nu*(dx(u)*dx(uu)+dy(u)*dy(uu) + dx(v)*dx(vv)+ dy(v)*dy(vv))
+    + dt*(dx(p)*uu + dy(p)*vv + pp*(dx(u)+dy(v)))
+    - dt*penalty*p*pp)
+    + on(a,b,d,u=0,v=0) + on(c,u=(2*x*(1-x))*sin(omega*t),v=0)
+    - int2d(Th)(uold*uu + vold*vv);
+
+//Crank-Nicolson
+problem cranknicolson([u,v,p],[uu,vv,pp]) =
+    int2d(Th)(u*uu + v*vv
+    + dtcn*nu*(dx(u)*dx(uu)+dy(u)*dy(uu)
+    + dx(v)*dx(vv)+dy(v)*dy(vv))
+    + dtcn*(dx(p)*uu + dy(p)*vv + pp*(dx(u) + dy(v)))
+    - dtcn*penalty*p*pp)
+    
+    + int2d(Th)(-uold*uu - vold*vv
+    + dtcn*nu*(dx(uold)*dx(uu)+dy(uold)*dy(uu)
+    + dx(vold)*dx(vv)+dy(vold)*dy(vv))
+    + dtcn*(dx(pold)*uu + dy(pold)*vv + pp*(dx(uold) + dy(vold)))
+    - dtcn*penalty*pold*pp)
+    
+    + on(a,b,d,u=0,v=0) + on(c,u=(2*x*(1-x))*sin(omega*t),v=0);
+
 // compute
 for(int i=0;i<Nit;i++)
 {
-  Uh uold = u, vold = v;
-  solve stokes([u,v,p],[uu,vv,pp]) =
-    int2d(Th)(u*uu + v*vv + dt*nu*(dx(u)*dx(uu)+dy(u)*dy(uu) + dx(v)*dx(vv)+ dy(v)*dy(vv))
-  + dt*dx(p)*uu + dt*dy(p)*vv + dt*pp*(dx(u)+dy(v))
-  - dt*penalty*p*pp)
-  + on(a,b,d,u=0,v=0) + on(c,u=(2*x*(1-x))*sin(omega*t),v=0)
-  - int2d(Th)(uold*uu + vold*vv);
+  //stokes;
+  cranknicolson;
   t += dt;
   plot([u,v],p,wait=0,value=1,cmm="time = "+t);
-  savevtk("out/outputfile"+i+".vtk",Th,[u,v,0],p);
+  savevtk("out/cn"+i+".vtk",Th,[u,v,0],p);
+  uold=u;
+  vold=v;
 } 
