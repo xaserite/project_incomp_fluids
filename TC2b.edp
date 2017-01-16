@@ -1,51 +1,108 @@
 load "iovtk";
 int C = 99;
 real L = 5;
-int Nh = 50;
+int Nhe = 50;
+int Nh = 20;
 real nu = 8.9e-4;
 real u0 = 1.;
-real omega = 1.;
+real omega = 2*pi; 
 real t = 0.;
-real Tmax = 2*pi;
-int Nit = 100;
+real Tmax = 1.; 
+int Nit = 400;
 real dt = Tmax/Nit;
+real dtcn = 0.5*dt;
+real penalty = 1.e-6;
 // domain and mesh building
 border a0(t=0,1) {x=t*L; y=-.5; label=C;}
 border a1(t=0,1) {x=L; y=-.5+t;}
 border a2(t=0,1) {x=L-t*L; y=.5; label=C;}
 border a3(t=0,1) {x=0; y=.5-t;}
-plot (a0(L*Nh) + a1(Nh) + a2(L*Nh) + a3(Nh), wait=true );
+//plot (a0(L*Nh) + a1(Nh) + a2(L*Nh) + a3(Nh), wait=true );
 mesh Th = buildmesh(a0(L*Nh) + a1(Nh) + a2(L*Nh) + a3(Nh));
-plot(Th,wait=1);
+mesh The = buildmesh(a0(L*Nhe) + a1(Nhe) + a2(L*Nhe) + a3(Nhe));
+//plot(Th,wait=1);
 
 // FE spaces
-fespace Uh(Th,P1b); Uh u,v,uu,vv,uold,vold;
-fespace Ph(Th,P1); Ph p,pp,pold;
+fespace Uh(Th,P2); 
+Uh u=0.,v=0.,uu,vv,uold,vold;
+Uh ucn=0.,vcn=0.,uucn,vvcn,uoldcn,voldcn;
 
-problem stokes([u,v,p],[uu,vv,pp]) =
-    int2d(Th)(u*uu + v*vv + dt*nu*(dx(u)*dx(uu)+dy(u)*dy(uu) + dx(v)*dx(vv)+ dy(v)*dy(vv))
-  + dt*dx(p)*uu + dt*dy(p)*vv + dt*pp*(dx(u)+dy(v))
-  - dt*1e-10*p*pp)
+fespace Ph(Th,P1); 
+Ph p,pp,pold;
+Ph pcn,ppcn,poldcn;
+
+fespace Uhe(The,P2);
+Uhe ue=0.,ve=0.,uue,vve,uolde,volde;
+
+fespace Phe(The,P1);
+Phe pe,ppe,polde;
+
+
+problem BackwardsEulerExact([ue,ve,pe],[uue,vve,ppe]) =
+    int2d(The)(
+    ue*uue + ve*vve 
+  + dt*nu*(dx(ue)*dx(uue)+dy(ue)*dy(uue) 
+  + dx(ve)*dx(vve)+ dy(ve)*dy(vve))
+  + dt*(dx(pe)*uue + dy(pe)*vve + ppe*(dx(ue) + dy(ve)))
+  - dt*penalty*pe*ppe)
+
+  + on(C,ue=0,ve=0) + on(a3,a1,ue=u0*sin(omega*t)^2,ve=0)
+  - int2d(The)(uolde*uue + volde*vve);
+
+
+problem BackwardsEuler([u,v,p],[uu,vv,pp]) =
+    int2d(Th)(
+    u*uu + v*vv 
+  + dt*nu*(dx(u)*dx(uu)+dy(u)*dy(uu) 
+  + dx(v)*dx(vv)+ dy(v)*dy(vv))
+  + dt*(dx(p)*uu + dy(p)*vv + pp*(dx(u) + dy(v)))
+  - dt*penalty*p*pp)
+
   + on(C,u=0,v=0) + on(a3,a1,u=u0*sin(omega*t)^2,v=0)
   - int2d(Th)(uold*uu + vold*vv);
 
-/*
-problem Crank_Nicolson([u,v,p],[uu,vv,pp]) =
-    int2d(Th)(u*uu + v*vv + 0.5*dt*nu*(dx(u)*dx(uu)+dy(u)*dy(uu) + dx(v)*dx(vv)+ dy(v)*dy(vv))
-  + 0.5*dt*dx(p)*uu + 0.5*dt*dy(p)*vv + 0.5*dt*pp*(dx(u)+dy(v))
-  - 0.5*dt*1e-10*p*pp)
-  + on(C,u=0,v=0) + on(a3,a1,u=u0*sin(omega*t)^2,v=0)
-  - int2d(Th)(uold*uu + vold*vv);
-*/
+
+problem CrankNicolson([ucn,vcn,pcn],[uucn,vvcn,ppcn]) =
+    int2d(Th)(
+      ucn*uucn + vcn*vvcn
+    + dtcn*nu*(dx(ucn)*dx(uucn)+dy(ucn)*dy(uucn)
+    + dx(vcn)*dx(vvcn)+dy(vcn)*dy(vvcn))
+    + dtcn*(dx(pcn)*uucn + dy(pcn)*vvcn + ppcn*(dx(ucn) + dy(vcn)))
+    - dtcn*penalty*pcn*ppcn
+    )
+    
+    + int2d(Th)(
+    - uoldcn*uucn - voldcn*vvcn
+    + dtcn*nu*(dx(uoldcn)*dx(uucn)+dy(uoldcn)*dy(uucn)
+    + dx(voldcn)*dx(vvcn)+dy(voldcn)*dy(vvcn))
+    + dtcn*(dx(poldcn)*uucn + dy(poldcn)*vvcn + ppcn*(dx(uoldcn) + dy(voldcn)))
+    - dtcn*penalty*poldcn*ppcn
+    )
+    
+    + on(C,ucn=0,vcn=0) + on(a3,a1,ucn=u0*sin(omega*t)^2,vcn=0);
 
 // compute
 for(int i=0;i<Nit;i++)
 {
-  stokes;
+  BackwardsEulerExact;
+  BackwardsEuler;
+  CrankNicolson;
+
   t += dt;
-  plot([u,v],p,wait=0,value=1,cmm="time = "+t);
-  savevtk("2b/P1bP1"+i+".vtk",Th,[u,v,0],p);
-  uold=u;
-  vold=v;
+
+  uolde  = ue;
+  volde  = ve;
+  uold   = u;
+  vold   = v;
+  uoldcn = ucn;
+  voldcn = vcn;
+
+  cout << "time = " << t << " dt = " << dt << endl << "Tmax = " << Tmax << endl << "Iteration = " << i+1 << "/" << Nit << endl;
+
+  //plot([u,v],p,wait=0,value=1,cmm="Euler time = "+t);
+  //plot([ucn,vcn],pcn,wait=0,value=1,cmm="Crank Nicolson time = "+t);
 } 
 
+cout << "Erreur Euler implicite : Norme = " << int2d(The)((u-ue)^2+(v-ve)^2) << endl;
+
+cout << "Erreur Crank Nicolson : Norme = " << int2d(The)((ucn-ue)^2+(vcn-ve)^2) << endl;
