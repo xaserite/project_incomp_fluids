@@ -2,4 +2,5 @@
 *.eps
 *.pdf
 *.msh
-*v.tk
+*.vtk
+*.pvsm

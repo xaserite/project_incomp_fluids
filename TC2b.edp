@@ -1,7 +1,7 @@
 load "iovtk";
 int C = 99;
 real L = 5;
-int Nh = 20;
+int Nh = 10;
 real nu = 8.9e-4;
 real u0 = 1.;
 real omega = 2*pi;
@@ -15,10 +15,11 @@ border a0(t=0,1) {x=t*L; y=-.5; label=C;}
 border a1(t=0,1) {x=L; y=-.5+t;}
 border a2(t=0,1) {x=L-t*L; y=.5; label=C;}
 border a3(t=0,1) {x=0; y=.5-t;}
-plot (a0(L*Nh) + a1(Nh) + a2(L*Nh) + a3(Nh), wait=true );
+//plot (a0(L*Nh) + a1(Nh) + a2(L*Nh) + a3(Nh), wait=true );
 mesh Th = buildmesh(a0(L*Nh) + a1(Nh) + a2(L*Nh) + a3(Nh));
 plot(Th,wait=1);
 // FE spaces
+
 fespace Uh(Th,P2); Uh u,v,uu,vv,uold=0.,vold=0.;
 fespace Ph(Th,P1); Ph p,pp,pold;
 
@@ -37,9 +38,8 @@ problem EulerImp([u,v,p],[uu,vv,pp]) =
   + dt*dx(p)*uu + dt*dy(p)*vv + dt*pp*(dx(u)+dy(v))
   - dt*penalty*p*pp)
   + on(C,u=0,v=0) + on(a3,u=(.25-y^2)*sin(omega*t)^2,v=0)
-	 + on(a1,u=(.25-y^2)*sin(omega*t)^2,v=0)
+	 + on(a1,u=u0*(.25-y^2)*sin(omega*t)^2,v=0)
   - int2d(Th)(uold*uu + vold*vv);
-
 
 // compute
 for(int i=0;i<Nit;i++)
@@ -49,6 +49,6 @@ for(int i=0;i<Nit;i++)
   t += dt;
   // Il faut un dossier out
   plot([u,v],p,wait=0,value=1,cmm="time = "+t);
-	savevtk("out/outputfile"+i+".vtk",Th,[u,v,0.],p);
+	//savevtk("out/TC2b"+i+".vtk",Th,[u,v,0.],p);
 } 
 
