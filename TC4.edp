@@ -1,11 +1,14 @@
-real L=0.5, H=0.25;
+load "iovtk";
+real L=0.5, H=0.8;
 int entry = 99, lim = 98, exit = 97;
-int Nh = 10;
+real refine = 1.5;
+int Nh = 20;
+int NL = Nh*L, NH=Nh*H, NLr = Nh*L*refine, NHr = Nh*H*refine;
 real nu = 8.9e-4;
-real u0 = 10.;
+real u0 = 1.;
 real omega = 1.;
 real t = 0.;
-real Tmax = 4*pi;
+real Tmax = 2*pi;
 int Nit = 100;
 real dt = Tmax/Nit;
 // domain and mesh building
@@ -16,23 +19,25 @@ border d(t=0,1-H){x=0;y=1-t; label=entry;}
 border e(t=0,L){x=t;y=H; label=lim;}
 border f(t=0,H){x=L;y=H-t; label=lim;}
 
-plot(a(10),b(10),c(10),d(10),e(10),f(10),wait=1);
-mesh Th = buildmesh(a(Nh) + b(Nh) + c(Nh) + d(Nh) + e(Nh) + f(Nh));
+plot(a(Nh-NL),b(Nh),c(Nh),d(Nh-NH),e(NLr),f(NHr),wait=1);
+mesh Th = buildmesh(a(Nh-NL) + b(Nh) + c(Nh) + d(Nh-NH) + e(NL) + f(NH));
 plot(Th,wait=1);
 // FE spaces
-fespace Uh(Th,P2); Uh u=0,v=0,uu,vv;
+fespace Uh(Th,P2); Uh u=0,v=0,uu,vv, uold, vold;
 fespace Ph(Th,P1); Ph p,pp;
 // compute
-for(int i=0;i<Nit;i++)
-{
-	Uh uold = u, vold = v;
-  solve stokes([u,v,p],[uu,vv,pp]) =
+problem stokes([u,v,p],[uu,vv,pp]) =
     int2d(Th)(u*uu + v*vv + dt*nu*(dx(u)*dx(uu)+dy(u)*dy(uu) + dx(v)*dx(vv)+ dy(v)*dy(vv))
 			+ dt*dx(p)*uu + dt*dy(p)*vv + dt*pp*(dx(u)+dy(v))
 			- dt*1e-10*p*pp)
 			- int2d(Th)(uold*uu + vold*vv)
 		+ on(lim,u=0,v=0) + on(entry,u=u0*sin(omega*t)^2,v=0) 
 		+ on(exit,u=(1-H)*u0*sin(omega*t)^2,v=0);
+		
+for(int i=0;i<Nit;i++){
+	Uh uold = u, vold = v;
+  stokes;
   t += dt;
   plot([u,v],p,wait=0,value=1,cmm="time = "+t);
+	//savevtk("out/TC4_"+i+".vtk",Th,[u,v,0],p);
 } 

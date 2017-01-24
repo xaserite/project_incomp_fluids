@@ -1,6 +1,6 @@
 load "iovtk";
 int C = 99;
-int Nh = 10;
+int Nh = 20;
 real nu = 8.9e-4;
 real u0 = 5.;
 real omega = 0.5;
@@ -18,18 +18,20 @@ plot(a(Nh),b(Nh),c(Nh),d(Nh),wait=1);
 mesh Th = buildmesh(a(Nh) + b(Nh) + c(Nh) + d(Nh));
 plot(Th,wait=1);
 // FE spaces
-fespace Uh(Th,P2b); Uh u = 0.,v = 0.,uu,vv;
-fespace Ph(Th,P1b); Ph p,pp;
+fespace Uh(Th,P2); Uh u = 0.,v = 0.,uu,vv,uold,vold;
+fespace Ph(Th,P1); Ph p,pp;
 // compute
-for(int i=0;i<Nit;i++)
-{
-	Uh uold = u, vold = v;
-  solve stokes([u,v,p],[uu,vv,pp]) =
-    int2d(Th)(u*uu + v*vv + dt*nu*(dx(u)*dx(uu)+dy(u)*dy(uu) + dx(v)*dx(vv)+ dy(v)*dy(vv))
+problem stokes([u,v,p],[uu,vv,pp]) =
+    int2d(Th)(u*uu + v*vv 
+			+ dt*nu*(dx(u)*dx(uu)+dy(u)*dy(uu) + dx(v)*dx(vv)+ dy(v)*dy(vv))
 			+ dt*dx(p)*uu + dt*dy(p)*vv + dt*pp*(dx(u)+dy(v))
 			- dt*1e-10*p*pp)
 			- int2d(Th)(uold*uu + vold*vv)
-		+ on(b,d,u=0,v=0) + on(a,u=u0*x*(1-x)*sin(omega*t),v=0);
+		+ on(b,c,d,u=0,v=0) + on(a,u=u0*sin(omega*t)^2,v=0);
+		
+for(int i=0;i<Nit;i++){
+	Uh uold = u, vold = v;
+  stokes;
 
   t += dt;
   plot([u,v],p,wait=0,value=1,cmm="time = "+t);
